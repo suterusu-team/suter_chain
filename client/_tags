@@ -1,2 +1,0 @@
-true: package(websocket), package(lwt), package(lwt_log), package(conduit-lwt-unix), package(cohttp-lwt-unix), package(lwt_ppx), package(hex)
-true: package(yojson)

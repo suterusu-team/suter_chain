@@ -1,3 +1,6 @@
 [submodule "substrate"]
 	path = substrate
 	url = https://github.com/suterusu-team/substrate.git
+[submodule "suter_cli"]
+	path = suter_cli
+	url = https://github.com/suterusu-team/suter_cli.git
