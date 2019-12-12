@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "suterchain.fullname" . }}
+  labels:
+{{ include "suterchain.labels" . | indent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.httpAPIPort }}
+      targetPort: {{ .Values.service.httpAPIPort }}
+      protocol: TCP
+      name: http
+    - port: {{ .Values.service.wsAPIPort }}
+      targetPort: {{ .Values.service.wsAPIPort }}
+      protocol: TCP
+      name: websocket
+    - port: {{ .Values.service.chainPort }}
+      targetPort: {{ .Values.service.chainPort }}
+      protocol: TCP
+      name: chain
+  selector:
+    app.kubernetes.io/name: {{ include "suterchain.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
