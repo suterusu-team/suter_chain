@@ -39,17 +39,16 @@ jobs:
       run: |
         aws eks --region ap-southeast-1 update-kubeconfig --name sutekube
 
-    # - name: Login to ECR
-    #   id: ecr
-    #   uses: elgohr/ecr-login-action@master
-    #   with:
-    #     access_key: ${{ secrets.AWS_ACCESS_KEY }}
-    #     secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    #     region: ${{ secrets.AWS_REGION }}
-    # - name: Publish to Registry
-    #   uses: elgohr/Publish-Docker-Github-Action@master
-    #   with:
-    #     name: suterchain
-    #     username: ${{ steps.ecr.outputs.username }}
-    #     password: ${{ steps.ecr.outputs.password }}
-    #     registry: ${{ steps.ecr.outputs.registry }}
+    - uses: azure/setup-helm@v1
+      with:
+        version: 'v2.15.2'
+      id: helm-install
+
+    - name: Helm upgrade chart
+      env:
+        IMAGE_TAG: ci
+        # IMAGE_TAG: ${{ github.sha }}
+        HELM_BIN: ${{ steps.helm-install.outputs.helm-path }}
+      run: |
+        echo "Helm upgrade suterusu $IMAGE_TAG"
+        $HELM_BIN upgrade suterchain $GITHUB_WORKSPACE/deploy/suterchain --set=image.tag=$IMAGE_TAG
