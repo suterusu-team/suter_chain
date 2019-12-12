@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,6 +26,10 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
+    - name: Generate kubeconfig
+      run: |
+        aws eks --region ${{ secrets.AWS_REGION }} update-kubeconfig --name sutekube
+
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
       env:
@@ -35,11 +42,6 @@ jobs:
         # be deployed to ECS.
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-
-    - name: Generate kubeconfig
-      run: |
-        aws eks --region ap-southeast-1 update-kubeconfig --name sutekube
 
     - uses: azure/setup-helm@v1
       with:
@@ -51,5 +53,4 @@ jobs:
         IMAGE_TAG: ${{ github.sha }}
         HELM_BIN: ${{ steps.helm-install.outputs.helm-path }}
       run: |
-        echo "Helm upgrade suterusu $IMAGE_TAG"
         $HELM_BIN upgrade suterchain $GITHUB_WORKSPACE/deploy/suterchain --set=image.tag=$IMAGE_TAG
