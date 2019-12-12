@@ -7,18 +7,18 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: 9933
-      targetPort: 9933
+    - port: {{ .Values.service.httpAPIPort }}
+      targetPort: {{ .Values.service.httpAPIPort }}
       protocol: TCP
       name: http
-    - port: 9944
-      targetPort: 9944
+    - port: {{ .Values.service.wsAPIPort }}
+      targetPort: {{ .Values.service.wsAPIPort }}
       protocol: TCP
       name: websocket
-    - port: 30333
-      targetPort: 30333
+    - port: {{ .Values.service.chainPort }}
+      targetPort: {{ .Values.service.chainPort }}
       protocol: TCP
-      name: tcp
+      name: chain
     # - port: {{ .Values.service.port }}
     #   targetPort: http
     #   protocol: TCP

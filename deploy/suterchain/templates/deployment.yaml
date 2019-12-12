@@ -30,16 +30,16 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - port: 9933
-              containerPort: 9933
+            - port: {{ .Values.service.httpAPIPort }}
+              containerPort: {{ .Values.service.httpAPIPort }}
               protocol: TCP
               name: http
-            - port: 9944
-              containerPort: 9944
+            - port: {{ .Values.service.wsAPIPort }}
+              containerPort: {{ .Values.service.wsAPIPort }}
               protocol: TCP
               name: websocket
-            - port: 30333
-              containerPort: 30333
+            - port: {{ .Values.service.chainPort }}
+              containerPort: {{ .Values.service.chainPort }}
               protocol: TCP
               name: tcp
             # - name: http
@@ -47,10 +47,10 @@ spec:
             #   protocol: TCP
           livenessProbe:
             tcpSocket:
-              port: 9944
+              port: {{ .Values.service.chainPort }}
           readinessProbe:
             tcpSocket:
-              port: 9944
+              port: {{ .Values.service.chainPort }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

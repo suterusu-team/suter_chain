@@ -34,6 +34,9 @@ securityContext: {}
 service:
   type: ClusterIP
   port: 9933
+  httpAPIPort: 9933
+  wsAPIPort: 9944
+  chainPort: 30333
 
 ingress:
   enabled: false
