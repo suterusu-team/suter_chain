@@ -1,10 +1,13 @@
 use primitives::{Pair, Public};
 use node_template_runtime::{
 	AccountId, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, IndicesConfig, SystemConfig, WASM_BINARY, 
+	SudoConfig, IndicesConfig, SystemConfig, WASM_BINARY, StakerStatus,StakingConfig,SessionKeys,
+    SessionConfig, Balance,
 };
 use babe_primitives::{AuthorityId as BabeId};
 use grandpa_primitives::{AuthorityId as GrandpaId};
+use sr_primitives::Perbill;
+
 use substrate_service;
 
 // Note this is the URL for the telemetry server
@@ -106,10 +109,17 @@ impl Alternative {
 	}
 }
 
+fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
+	SessionKeys { grandpa, babe }
+}
+
 fn testnet_genesis(initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
 	root_key: AccountId, 
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool) -> GenesisConfig {
+
+	const STASH: Balance = 100;
+
 	GenesisConfig {
 		system: Some(SystemConfig {
 			code: WASM_BINARY.to_vec(),
@@ -122,14 +132,30 @@ fn testnet_genesis(initial_authorities: Vec<(AccountId, AccountId, GrandpaId, Ba
 			balances: endowed_accounts.iter().cloned().map(|k|(k, 1 << 60)).collect(),
 			vesting: vec![],
 		}),
+		session: Some(SessionConfig {
+			keys: initial_authorities.iter().map(|x| {
+				(x.0.clone(), session_keys(x.2.clone(), x.3.clone()))
+			}).collect::<Vec<_>>(),
+		}),
+		staking: Some(StakingConfig {
+			current_era: 0,
+			validator_count: 7,
+			minimum_validator_count: 4,
+			stakers: initial_authorities.iter().map(|x| {
+				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
+			}).collect(),
+			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+			slash_reward_fraction: Perbill::from_percent(10),
+			.. Default::default()
+		}),
 		sudo: Some(SudoConfig {
 			key: root_key,
 		}),
 		babe: Some(BabeConfig {
-			authorities: initial_authorities.iter().map(|x| (x.3.clone(), 1)).collect(),
+			authorities: vec![],
 		}),
 		grandpa: Some(GrandpaConfig {
-			authorities: initial_authorities.iter().map(|x| (x.2.clone(), 1)).collect(),
+			authorities: vec![],
 		}),
 	}
 }
