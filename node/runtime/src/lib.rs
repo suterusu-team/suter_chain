@@ -16,7 +16,6 @@ use sr_primitives::{
 };
 use sr_primitives::traits::{NumberFor, BlakeTwo256, Block as BlockT, StaticLookup, Verify, ConvertInto};
 use sr_primitives::weights::Weight;
-use sr_primitives::curve::PiecewiseLinear;
 use babe::{AuthorityId as BabeId};
 use grandpa::{AuthorityId as GrandpaId, AuthorityWeight as GrandpaWeight};
 use grandpa::fg_primitives;
@@ -28,21 +27,11 @@ use version::RuntimeVersion;
 #[cfg(feature = "std")]
 use version::NativeVersion;
 
-/// Implementations of some helper traits passed into runtime modules as associated types.
-pub mod impls;
-use impls::CurrencyToVoteHandler;
-
-
-/// Constant values used within the runtime.
-pub mod constants;
-//use constants::{time::*, currency::*};
-
 // A few exports that help ease life for downstream crates.
 #[cfg(any(feature = "std", test))]
 pub use sr_primitives::BuildStorage;
 pub use timestamp::Call as TimestampCall;
 pub use balances::Call as BalancesCall;
-pub use staking::StakerStatus;
 pub use sr_primitives::{Permill, Perbill};
 pub use support::{StorageValue, construct_runtime, parameter_types};
 
@@ -60,9 +49,6 @@ pub type AccountId = <Signature as Verify>::Signer;
 /// never know...
 pub type AccountIndex = u32;
 
-/// Type used for expressing timestamp.
-pub type Moment = u64;
-
 /// Balance of an account.
 pub type Balance = u128;
 
@@ -74,6 +60,9 @@ pub type Hash = primitives::H256;
 
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
+
+/// Used for the module sect in `./token.rs`
+mod token;
 
 /// Used for the module template in `./template.rs`
 mod template;
@@ -233,86 +222,6 @@ impl timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const UncleGenerations: BlockNumber = 5;
-}
-
-impl authorship::Trait for Runtime {
-	type FindAuthor = session::FindAccountFromAuthorIndex<Self, Babe>;
-	type UncleGenerations = UncleGenerations;
-	type FilterUncle = ();
-	type EventHandler = Staking;
-}
-
-type SessionHandlers = (Grandpa, Babe);
-
-impl_opaque_keys! {
-	pub struct SessionKeys {
-		#[id(key_types::GRANDPA)]
-		pub grandpa: GrandpaId,
-		#[id(key_types::BABE)]
-		pub babe: BabeId,
-	}
-}
-
-// NOTE: `SessionHandler` and `SessionKeys` are co-dependent: One key will be used for each handler.
-// The number and order of items in `SessionHandler` *MUST* be the same number and order of keys in
-// `SessionKeys`.
-// TODO: Introduce some structure to tie these together to make it a bit less of a footgun. This
-// should be easy, since OneSessionHandler trait provides the `Key` as an associated type. #2858
-parameter_types! {
-	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
-}
-
-impl session::Trait for Runtime {
-	type OnSessionEnding = Staking;
-	type SessionHandler = SessionHandlers;
-	type ShouldEndSession = Babe;
-	type Event = Event;
-	type Keys = SessionKeys;
-	type ValidatorId = <Self as system::Trait>::AccountId;
-	type ValidatorIdOf = staking::StashOf<Self>;
-	type SelectInitialValidators = Staking;
-	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
-}
-
-impl session::historical::Trait for Runtime {
-	type FullIdentification = staking::Exposure<AccountId, Balance>;
-	type FullIdentificationOf = staking::ExposureOf<Runtime>;
-}
-
-
-srml_staking_reward_curve::build! {
-	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
-		min_inflation: 0_025_000,
-		max_inflation: 0_100_000,
-		ideal_stake: 0_500_000,
-		falloff: 0_050_000,
-		max_piece_count: 40,
-		test_precision: 0_005_000,
-	);
-}
-
-parameter_types! {
-	pub const SessionsPerEra: sr_staking_primitives::SessionIndex = 6;
-	pub const BondingDuration: staking::EraIndex = 24 * 28;
-	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
-}
-
-impl staking::Trait for Runtime {
-	type Currency = Balances;
-	type Time = Timestamp;
-	type CurrencyToVote = CurrencyToVoteHandler;
-	type OnRewardMinted = (); //todo: need treasury?
-	type Event = Event;
-	type Slash = (); // todo: now just abandon the slashed funds
-	type Reward = (); // rewards are minted from the void
-	type SessionsPerEra = SessionsPerEra;
-	type BondingDuration = BondingDuration;
-	type SessionInterface = Self;
-	type RewardCurve = RewardCurve;
-}
-
-parameter_types! {
 	pub const ExistentialDeposit: u128 = 500;
 	pub const TransferFee: u128 = 0;
 	pub const CreationFee: u128 = 0;
@@ -345,6 +254,9 @@ impl sudo::Trait for Runtime {
 	type Proposal = Call;
 }
 
+impl token::Trait for Runtime {
+}
+
 /// Used for the module template in `./template.rs`
 impl template::Trait for Runtime {
 	type Event = Event;
@@ -358,15 +270,12 @@ construct_runtime!(
 	{
 		System: system::{Module, Call, Storage, Config, Event},
 		Timestamp: timestamp::{Module, Call, Storage, Inherent},
-		Authorship: authorship::{Module, Call, Storage, Inherent},
 		Babe: babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
 		Grandpa: grandpa::{Module, Call, Storage, Config, Event},
 		Indices: indices::{default, Config<T>},
 		Balances: balances::{default, Error},
-		Staking: staking::{default, OfflineWorker},
-		Session: session::{Module, Call, Storage, Event, Config<T>},
 		Sudo: sudo,
-		// Used for the module template in `./template.rs`
+        Token: token :: {Module, Call, Storage},
 		TemplateModule: template::{Module, Call, Storage, Event<T>},
 	}
 );
