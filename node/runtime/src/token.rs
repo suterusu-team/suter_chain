@@ -1,5 +1,34 @@
-use support::{decl_storage, decl_module};
-use system::ensure_signed;
+use support::{decl_storage, decl_module, decl_event,
+    traits::{
+        UpdateBalanceOutcome, Currency,
+    },
+    dispatch::Result,
+};
+
+use sr_primitives::{
+    traits::{
+        StaticLookup,
+    },
+};
+
+use system::{
+    OnNewAccount,
+    ensure_signed,
+};
+
+use balances::{
+    Instance,
+    DefaultInstance,
+};
+
+decl_storage! {
+    trait Store for Module<T:Trait> as TokenStorage {
+        TokenBalance get(balance): u32;
+        UserInfo: map T::AccountId => u32;
+    }
+}
+
+
 
 //
 // Suppose x is the private key and y=g^x is the public
@@ -32,12 +61,13 @@ pub trait BTrait<I: Instance = DefaultInstance>: system::Trait {
 }
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait {
+pub trait Trait<I: Instance = DefaultInstance>: system::Trait {
+    type Balance: Token;
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
 }
 
-impl<T:Trait<I>, I: DefaultInstance> BTrait<I> for T {
+impl<T:Trait<I>, I> BTrait<I> for T {
     type Balance = T::Balance;
     type OnNewAccount = T::OnNewAccount;
 }
@@ -58,24 +88,22 @@ impl History for TransferHistory {
     }
 }
 
-decl_storage! {
-    trait Store for Module<T:Trait> as TokenStorage {
-        TokenBalance get(balance): u32;
-        UserInfo: map T::AccountId => u32;
-    }
-}
-
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         fn transfer(origin,
-            encoded_amt:{u64, u64},
+            encoded_amt:u64,
 			dest: <T::Lookup as StaticLookup>::Source
         ) -> Result {
             let _ = ensure_signed(origin)?;
             let balance_cipher_context = getBalance();
+            /*
+             * TODO:
+             * Decode the amount and put it into the
+             * Cipher Context
             let valid = decode_transfer encoded_amt balance_cipher_context;
 			let dest = T::Lookup::lookup(dest)?;
             let target = getTarget
+             */
             Ok(())
         }
     }
