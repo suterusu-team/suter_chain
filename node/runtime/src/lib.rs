@@ -61,7 +61,7 @@ pub type Hash = primitives::H256;
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
 
-/// Used for the module sect in `./token.rs`
+/// Used for the module token in `./token.rs`
 mod token;
 
 /// Used for the module template in `./template.rs`
@@ -255,6 +255,9 @@ impl sudo::Trait for Runtime {
 }
 
 impl token::Trait for Runtime {
+    type OnNewAccount = Indices;
+    type Balance = u128;
+    type Event = Event;
 }
 
 /// Used for the module template in `./template.rs`
