@@ -61,7 +61,7 @@ pub type Hash = primitives::H256;
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
 
-/// Used for the module token in `./token.rs`
+/// Used for the module anon in `./suter.rs`
 mod token;
 
 /// Used for the module template in `./template.rs`
@@ -249,15 +249,13 @@ impl balances::Trait for Runtime {
 	type WeightToFee = ConvertInto;
 }
 
+impl token::Trait for Runtime {
+    type TransferHistory = token::TransferHistory;
+}
+
 impl sudo::Trait for Runtime {
 	type Event = Event;
 	type Proposal = Call;
-}
-
-impl token::Trait for Runtime {
-    type OnNewAccount = Indices;
-    type Balance = u128;
-    type Event = Event;
 }
 
 /// Used for the module template in `./template.rs`
@@ -278,7 +276,7 @@ construct_runtime!(
 		Indices: indices::{default, Config<T>},
 		Balances: balances::{default, Error},
 		Sudo: sudo,
-        Token: token :: {Module, Call, Storage},
+        Token: token:: {Module, Call, Storage},
 		TemplateModule: template::{Module, Call, Storage, Event<T>},
 	}
 );

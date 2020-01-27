@@ -5,6 +5,7 @@ authors = ["Glen"]
 edition = "2018"
 
 [dependencies]
+primitive-types = { version = "0.5.1", default-features = false, features = ["codec"] }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 safe-mix = { version = "1.0.0", default-features = false }
 codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
