@@ -16,6 +16,7 @@ use sr_primitives::{
 use system::{
     OnNewAccount,
     ensure_signed,
+    ensure_root,
 };
 
 //
@@ -94,10 +95,10 @@ pub fn zp_div(x:u128,y:u128,p:u128) -> u128 {
 pub trait AmountCipher<T> {
     fn prime() -> T;
     fn base() -> PubKey<T>;
-    fn encode_amount(p_recv:PubKey<T>,a:Amount<T>,r:T) -> Self; 
+    fn encode_amount(p_recv:PubKey<T>,a:Amount<T>,r:T) -> Self;
     fn plus_amount(self, p:Self) -> Self;
     fn minus_amount(self, p:Self) -> Self;
-    fn decode_amount(self,p_recv:PubKey<T>) -> T; 
+    fn decode_amount(self,p_recv:PubKey<T>) -> T;
 }
 
 /* U128 Pair as Amount Entries */
@@ -112,7 +113,7 @@ impl AmountCipher<u128> for CipherText<u128> {
     }
     /*
      * Suppose sender sends the amout := a
-     * We encod it into (γ^a * p_recv^r, γ^r)
+     * We encode it into (γ^a * p_recv^r, γ^r)
      */
     fn encode_amount(p_recv:PubKey<u128>,a:u128,r:u128) -> CipherText<u128> {
         let gamma = Self::base();
@@ -130,7 +131,7 @@ impl AmountCipher<u128> for CipherText<u128> {
         let p = Self::prime();
         (zp_div(self.0, v.0, p), v.1)
     }
-    fn decode_amount(self, k:u128) -> u128{
+    fn decode_amount(self, _k:u128) -> u128 {
         1234
     }
 }
@@ -146,18 +147,15 @@ pub trait History<B> {
     type Balance;
     fn get_pub_key (&self) -> B;
     fn new (k:B, h:CipherText<B>) -> Self;
+    fn set_balance(self, c:B) -> Self;
     fn increase_balance (self, c:B) -> Self;
     fn decrease_balance (self, c:B) -> Self;
     fn compose_entry (&self, c:B) -> CipherText<B>;
 }
 
 /// The module's configuration trait.
-pub trait Trait<I: Instance = DefaultInstance>: system::Trait
-    {
-    /*
-    type TransferHistory : History<u128>;
-    */
-    type TransferHistory;
+pub trait Trait<I: Instance = DefaultInstance>: system::Trait {
+    type Balance;
 }
 
 impl History<u128> for TransferHistory {
@@ -182,6 +180,12 @@ impl History<u128> for TransferHistory {
     fn get_pub_key (&self) -> u128 {
         self.pub_key
     }
+
+    fn set_balance(self, a:Self::Balance) -> TransferHistory {
+        let e = self.compose_entry(a);
+        Self::new(self.get_pub_key(), e)
+    }
+
     fn increase_balance(self, a:Self::Balance) -> TransferHistory {
         let e = self.compose_entry(a);
         let new_cipher = self.history.plus_amount(e);
@@ -199,6 +203,25 @@ impl<T:Trait<I>, I: Instance> Trait<I> for T {
     type Event = Event<T>;
     type TransferHistory = TransferHistory;
     type OnNewAccount = OnNewAccount<Self::AccountId>;
+}
+*/
+
+/* We need implement Balance trait as follows
+ * One
+ * Zero
+ * CheckedMul
+ * CheckedDiv
+ * CheckedSquareRoot
+ * CheckedAdd
+ * CheckedSub
+impl<T:Trait<I>, I: Instance> Currency<T::AccountId> for Module<T,I>
+where
+    T::Balance: History<u128>
+{
+    type Balance = T::Balance;
+    fn total_balance(who: &T::AccountId) -> Self::Balance {
+        0
+    }
 }
 */
 
@@ -230,16 +253,28 @@ decl_module! {
             <BalanceHistory<T,I>>::insert(dest, dest_new);
             Ok(())
         }
+
+        fn set_balance(
+            origin,
+            amount:u128,
+            who: <T::Lookup as StaticLookup>::Source
+        ) {
+            ensure_root(origin)?;
+            let who = T::Lookup::lookup(who)?;
+            let who_history = <BalanceHistory<T,I>>::get(who.clone());
+            let who_new = who_history.set_balance(amount);
+            <BalanceHistory<T,I>>::insert(who, who_new);
+        }
     }
 }
 
 decl_event!(
 	pub enum Event<T, I: Instance = DefaultInstance> where
 		<T as system::Trait>::AccountId,
-		<T as Trait<I>>::TransferHistory
+		<T as Trait<I>>::Balance
 	{
 		/// A new account was created.
-		NewAccount(AccountId, TransferHistory),
+		NewAccount(AccountId, Balance),
 	}
 );
 
