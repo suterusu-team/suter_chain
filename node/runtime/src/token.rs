@@ -1,9 +1,12 @@
 pub use primitive_types::{U256};
 
-use support::{decl_storage, decl_module, decl_event,
+use support::{
+    decl_storage, decl_module, decl_event,
+/*
     traits::{
         Currency,
     },
+*/
     dispatch::{Vec, Result},
 };
 
@@ -13,8 +16,8 @@ use sr_primitives::{
     },
 };
 
+
 use system::{
-    OnNewAccount,
     ensure_signed,
     ensure_root,
 };
@@ -225,13 +228,26 @@ where
 }
 */
 
+impl<T:Trait<I>, I: Instance> Module<T,I> {
+	fn initialize_primeset(prime: &u128) {
+	}
+}
+
 decl_storage! {
     trait Store for Module<T:Trait<I>, I:Instance = DefaultInstance>
-    as TokenStorage {
-        BalanceProof get(u128): u128;
+    as Token {
+        pub Primeset build(|config: &GenesisConfig| {
+            config.primeset
+        }): u128;
+
         BalanceHistory get(balance_history_getter):
             map T::AccountId => TransferHistory;
     }
+	add_extra_genesis {
+		config(primeset): u128;
+        build(|config| Module::<T,I>::initialize_primeset(&config.primeset))
+	}
+
 }
 
 
@@ -254,7 +270,7 @@ decl_module! {
             Ok(())
         }
 
-        fn set_balance(
+        fn reset_balance(
             origin,
             amount:u128,
             who: <T::Lookup as StaticLookup>::Source
@@ -264,6 +280,14 @@ decl_module! {
             let who_history = <BalanceHistory<T,I>>::get(who.clone());
             let who_new = who_history.set_balance(amount);
             <BalanceHistory<T,I>>::insert(who, who_new);
+        }
+
+        fn get_proof(
+            origin,
+            amount:u128,
+        ) {
+            ensure_root(origin)?;
+            Primeset::<I>::put(amount);
         }
     }
 }

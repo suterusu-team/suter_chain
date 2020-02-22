@@ -276,7 +276,7 @@ construct_runtime!(
 		Indices: indices::{default, Config<T>},
 		Balances: balances::{default, Error},
 		Sudo: sudo,
-        Token: token:: {Module, Call, Storage},
+        Token: token:: {Module, Call, Storage, Config},
 		TemplateModule: template::{Module, Call, Storage, Event<T>},
 	}
 );
