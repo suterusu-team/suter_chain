@@ -250,7 +250,7 @@ impl balances::Trait for Runtime {
 }
 
 impl token::Trait for Runtime {
-    type Balance = token::TransferHistory;
+    type Balance = token::CipherText<u128>;
 }
 
 impl sudo::Trait for Runtime {
