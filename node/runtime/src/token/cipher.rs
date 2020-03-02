@@ -53,7 +53,7 @@ pub trait CipherFunctor<Key, F, T> {
 }
 
 /* U128 Pair as Amount Entries */
-impl<T:PrimeRing<T>> CipherFunctor<T, T, (T,T)> for EGICipher<T> 
+impl<T:PrimeRing<T>> CipherFunctor<T, T, (T,T)> for EGICipher<T>
     where T:Copy {
     /*
      * Suppose sender sends the amout := a
@@ -105,4 +105,8 @@ impl<T:PrimeRing<T>> CipherFunctor<T, T, (T,T)> for EGICipher<T>
     fn within(&self, from:T, to:T, proof:Vec<T>, t:(T,T)) -> bool {
         return false;
     }
+}
+
+mod tests {
+    use super::*;
 }

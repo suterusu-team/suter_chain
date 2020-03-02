@@ -182,15 +182,29 @@ decl_module! {
             Ok(())
         }
 
+        fn lock_balance(
+            origin,
+            amount:u128,
+            proof:[u128;4],
+        ) {
+            let who = ensure_signed(origin)?;
+            let cipher = Cipher::<I>::get().to_cipher();
+            let balance = <BalanceMap<T,I>>::get(who.clone());
+            let delta = cipher.encode(balance.pubkey, amount, balance.rel);
+            let remain_cipher = cipher.minus(balance.current, delta);
+            /* TODO: need to port zkrp in ING */
+            cipher.check(proof.to_vec(), remain_cipher);
+            let who_new = balance.lock(&cipher, amount);
+            <BalanceMap<T,I>>::insert(who, who_new);
+        }
+
         fn reset_balance(
             origin,
             amount:u128,
-            who: <T::Lookup as StaticLookup>::Source
         ) {
-            ensure_root(origin)?;
+            let who = ensure_signed(origin)?;
             let cipher = Cipher::<I>::get().to_cipher();
             let rel = Rel::<I>::get();
-            let who = T::Lookup::lookup(who)?;
             let who_balance = <BalanceMap<T,I>>::get(who.clone());
             let who_new = who_balance.set(&cipher, amount);
             <BalanceMap<T,I>>::insert(who, who_new);
