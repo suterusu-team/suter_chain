@@ -21,6 +21,7 @@ use crate::token::primering::PrimeRing;
 // γ^b = cipher_text.0 / cipher_text.1^x
 //
 
+#[derive(PartialEq)]
 pub struct EGICipher<T:Copy> {
     pub gamma: T,
     pub prime: T,
@@ -30,11 +31,12 @@ pub struct EGICipher<T:Copy> {
  * So far the amount is encoded using base γ
  */
 pub trait CipherFunctor<Key, F, T> {
+
     /* encode src to target of T */
     fn encode(&self, pk: Key, src:F, r:F) -> T;
 
     /* Check wheter a proof proves that the prover knows the src */
-    fn check(&self, proof:Vec<F>, t:T) -> bool;
+    fn check(&self, proof:Vec<T>, t:T) -> bool;
 
     /*
      * We hope that a ciphertest can be change to another without revealing its
@@ -49,12 +51,11 @@ pub trait CipherFunctor<Key, F, T> {
     fn plus(&self, src:T, target:T) -> T;
     fn minus(&self, src:T, target:T) -> T;
 
-    fn within(&self, from:F, to:F, proof:Vec<F>, t:T) -> bool;
 }
 
 /* U128 Pair as Amount Entries */
 impl<T:PrimeRing<T>> CipherFunctor<T, T, (T,T)> for EGICipher<T>
-    where T:Copy {
+    where T:Copy + PartialEq {
     /*
      * Suppose sender sends the amout := a
      * We encode it into (γ^a * pk^r, γ^r)
@@ -93,20 +94,14 @@ impl<T:PrimeRing<T>> CipherFunctor<T, T, (T,T)> for EGICipher<T>
      * hash function h hashes (a, private, r) where r is an randomly picked
      * number of type f:T
      */
-    fn check(&self, proof:Vec<T>, t:(T,T)) -> bool {
-        return false;
-    }
-
-    /* Suppose that
-     * R equals to Σ_i x_i*E_i, then it follows that
-     * E_k != 0 and x_i needs to be either one or zero.
-     * Also ∏_i cipher(x_i*E_i, γ_i) needs to equal to cipher(R*E,γ)
-     */
-    fn within(&self, from:T, to:T, proof:Vec<T>, t:(T,T)) -> bool {
-        return false;
+    fn check(&self, proof:Vec<(T,T)>, t:(T,T)) -> bool {
+        let s = proof.iter().fold(self.zero(1,0), |sum, val| {
+            self.plus(sum, *val)
+        });
+        return s==t
     }
 }
 
 mod tests {
-    use super::*;
+    //use super::*;
 }

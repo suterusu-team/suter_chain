@@ -1,8 +1,13 @@
 pub use primitive_types::{U256};
 
+use log::trace;
+
 use crate::token::cipher::{
     EGICipher,
     CipherFunctor,
+};
+use crate::token::proof::{
+    CipherProof,
 };
 
 use support::{
@@ -30,6 +35,7 @@ use system::{
 
 mod primering;
 mod cipher;
+mod proof;
 
 use codec::{Encode, Decode};
 
@@ -185,15 +191,19 @@ decl_module! {
         fn lock_balance(
             origin,
             amount:u128,
-            proof:[u128;4],
+            proof:[(u128,u128);4],
         ) {
             let who = ensure_signed(origin)?;
             let cipher = Cipher::<I>::get().to_cipher();
             let balance = <BalanceMap<T,I>>::get(who.clone());
             let delta = cipher.encode(balance.pubkey, amount, balance.rel);
             let remain_cipher = cipher.minus(balance.current, delta);
-            /* TODO: need to port zkrp in ING */
-            cipher.check(proof.to_vec(), remain_cipher);
+
+            /* TODO: need to port zkrp in ING
+             * Currently we assume the highest bit of one is less
+             * then 64, thus x < 2^64 - 1
+             */
+            cipher.within_exp(64, remain_cipher, proof.to_vec());
             let who_new = balance.lock(&cipher, amount);
             <BalanceMap<T,I>>::insert(who, who_new);
         }
@@ -202,6 +212,7 @@ decl_module! {
             origin,
             amount:u128,
         ) {
+            trace! ("reset balance ...\n");
             let who = ensure_signed(origin)?;
             let cipher = Cipher::<I>::get().to_cipher();
             let rel = Rel::<I>::get();
