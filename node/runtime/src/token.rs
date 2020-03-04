@@ -191,6 +191,7 @@ decl_module! {
         fn lock_balance(
             origin,
             amount:u128,
+            s:u128,
             proof:[(u128,u128);4],
         ) {
             let who = ensure_signed(origin)?;
@@ -203,7 +204,7 @@ decl_module! {
              * Currently we assume the highest bit of one is less
              * then 64, thus x < 2^64 - 1
              */
-            cipher.within_exp(64, remain_cipher, proof.to_vec());
+            cipher.within_exp(s, s, remain_cipher, proof.to_vec());
             let who_new = balance.lock(&cipher, amount);
             <BalanceMap<T,I>>::insert(who, who_new);
         }

@@ -95,8 +95,10 @@ impl<T:PrimeRing<T>> CipherFunctor<T, T, (T,T)> for EGICipher<T>
      * number of type f:T
      */
     fn check(&self, proof:Vec<(T,T)>, t:(T,T)) -> bool {
-        let s = proof.iter().fold(self.zero(1,0), |sum, val| {
-            self.plus(sum, *val)
+        let mut proof_vec = proof.clone();
+        let v = proof_vec.pop().unwrap();
+        let s = proof_vec.iter().fold(v, |s, val| {
+            self.plus(s, *val)
         });
         return s==t
     }
