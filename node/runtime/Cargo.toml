@@ -1,42 +1,38 @@
 [package]
 name = "suter-runtime"
-version = "0.0.1"
+version = "2.0.0"
 authors = ["Glen"]
 edition = "2018"
 
 [dependencies]
+log = "0.4"
 primitive-types = { version = "0.5.1", default-features = false, features = ["codec"] }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 safe-mix = { version = "1.0.0", default-features = false }
 codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
-rstd = { package = "sr-std", path = "../../substrate/core/sr-std", default_features = false }
-runtime-io = { package = "sr-io", path = "../../substrate/core/sr-io", default_features = false }
-version = { package = "sr-version", path = "../../substrate/core/sr-version", default_features = false }
-support = { package = "srml-support", path = "../../substrate/srml/support", default_features = false }
-primitives = { package = "substrate-primitives", path = "../../substrate/core/primitives", default_features = false }
-sr-primitives = { path = "../../substrate/core/sr-primitives", default_features = false }
-substrate-session = { path = "../../substrate/core/session", default-features = false }
-balances = { package = "srml-balances", path = "../../substrate/srml/balances", default_features = false }
-authorship = { package = "srml-authorship", path = "../../substrate/srml/authorship", default-features = false }
-babe = { package = "srml-babe", path = "../../substrate/srml/babe", default-features = false }
-babe-primitives = { package = "substrate-consensus-babe-primitives", path = "../../substrate/core/consensus/babe/primitives", default-features = false }
-executive = { package = "srml-executive", path = "../../substrate/srml/executive", default_features = false }
-collective = { package = "srml-collective", path = "../../substrate/srml/collective", default-features = false }
-indices = { package = "srml-indices", path = "../../substrate/srml/indices", default_features = false }
-membership = { package = "srml-membership", path = "../../substrate/srml/membership", default-features = false }
-grandpa = { package = "srml-grandpa", path = "../../substrate/srml/grandpa", default-features = false }
-system = { package = "srml-system", path = "../../substrate/srml/system", default_features = false }
-timestamp = { package = "srml-timestamp", path = "../../substrate/srml/timestamp", default_features = false }
-sudo = { package = "srml-sudo", path = "../../substrate/srml/sudo", default_features = false }
-sr-staking-primitives = { path = "../../substrate/core/sr-staking-primitives", default-features = false }
-session = { package = "srml-session", path = "../../substrate/srml/session", default-features = false, features = ["historical"] }
-staking = { package = "srml-staking", path = "../../substrate/srml/staking", default-features = false }
-srml-staking-reward-curve = { path = "../../substrate/srml/staking/reward-curve"}
-client = { package = "substrate-client", path = "../../substrate/core/client", default_features = false }
-offchain-primitives = { package = "substrate-offchain-primitives", path = "../../substrate/core/offchain/primitives", default-features = false }
+rstd = { package = "sr-std", path = "../../core/sr-std", default_features = false }
+runtime-io = { package = "sr-io", path = "../../core/sr-io", default_features = false }
+version = { package = "sr-version", path = "../../core/sr-version", default_features = false }
+support = { package = "srml-support", path = "../../srml/support", default_features = false }
+primitives = { package = "substrate-primitives", path = "../../core/primitives", default_features = false }
+substrate-session = { path = "../../core/session", default-features = false }
+balances = { package = "srml-balances", path = "../../srml/balances", default_features = false }
+aura = { package = "srml-aura", path = "../../srml/aura", default_features = false }
+aura-primitives = { package = "substrate-consensus-aura-primitives", path = "../../core/consensus/aura/primitives", default_features = false }
+grandpa = { package = "srml-grandpa", path = "../../srml/grandpa", default_features = false }
+executive = { package = "srml-executive", path = "../../srml/executive", default_features = false }
+indices = { package = "srml-indices", path = "../../srml/indices", default_features = false }
+randomness-collective-flip = { package = "srml-randomness-collective-flip", path = "../../srml/randomness-collective-flip", default_features = false }
+system = { package = "srml-system", path = "../../srml/system", default_features = false }
+timestamp = { package = "srml-timestamp", path = "../../srml/timestamp", default_features = false }
+sudo = { package = "srml-sudo", path = "../../srml/sudo", default_features = false }
+transaction-payment = { package = "srml-transaction-payment", path = "../../srml/transaction-payment", default_features = false }
+sr-primitives = { path = "../../core/sr-primitives", default_features = false }
+client = { package = "substrate-client", path = "../../core/client", default_features = false }
+offchain-primitives = { package = "substrate-offchain-primitives", path = "../../core/offchain/primitives", default-features = false }
 
 [build-dependencies]
-wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.2" }
+wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.4" }
 
 [features]
 default = ["std"]
@@ -47,24 +43,21 @@ std = [
 	"runtime-io/std",
 	"support/std",
 	"balances/std",
-	"babe/std",
-	"babe-primitives/std",
+	"aura/std",
+	"aura-primitives/std",
+	"grandpa/std",
 	"executive/std",
 	"indices/std",
-	"grandpa/std",
 	"primitives/std",
 	"sr-primitives/std",
-	"sr-staking-primitives/std",
-	"staking/std",
+	"randomness-collective-flip/std",
 	"system/std",
 	"timestamp/std",
 	"sudo/std",
+	"transaction-payment/std",
 	"version/std",
 	"serde",
 	"safe-mix/std",
 	"offchain-primitives/std",
-	"session/std",
 	"substrate-session/std",
-	"collective/std",
-	"membership/std",
 ]

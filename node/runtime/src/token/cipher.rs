@@ -27,8 +27,8 @@ pub struct EGICipher<T:Copy> {
     pub prime: T,
 }
 
-/*
- * So far the amount is encoded using base γ
+/**
+ * An Cipher Functor trait.
  */
 pub trait CipherFunctor<Key, F, T> {
 

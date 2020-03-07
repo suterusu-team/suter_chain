@@ -1,4 +1,5 @@
 pub use primitive_types::{U256};
+pub mod balance;
 
 use log::trace;
 
@@ -10,14 +11,15 @@ use crate::token::proof::{
     CipherProof,
 };
 
+pub use crate::token::balance::{
+    CipherText,
+    CipherBalance,
+};
+
+
+
 use support::{
-    decl_storage, decl_module, decl_event,
-    dispatch::{Result},
-/*
-    traits::{
-        Currency,
-    },
-*/
+    decl_storage, decl_module, decl_event, dispatch
 };
 
 use sr_primitives::{
@@ -32,12 +34,11 @@ use system::{
     ensure_root,
 };
 
+use codec::{Encode, Decode};
 
 mod primering;
 mod cipher;
 mod proof;
-
-use codec::{Encode, Decode};
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 struct CipherInfo(u128, u128);
@@ -48,72 +49,9 @@ impl CipherInfo {
     }
 }
 
-pub trait CipherBalance<B>
-    where B:Copy {
-    type Balance;
-    fn make (cipher:&EGICipher<B>, pk:B, b:B, r:B) -> Self;
-    fn set(self, cipher:&EGICipher<B>, b:B) -> Self;
-    fn lock(self, cipher:&EGICipher<B>, b:B) -> Self;
-    fn switch(self, cipher:&EGICipher<B>, npk:u128) -> Self;
-    fn increase(self, cipher:&EGICipher<B>, delta:B) -> Self;
-    fn decrease(self, cipher:&EGICipher<B>, delta:B) -> Self;
-}
-
 /// The module's configuration trait.
 pub trait Trait<I: Instance = DefaultInstance>: system::Trait {
     type Balance;
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
-pub struct CipherText<T>{
-    pubkey: T,
-    rel: T,
-    current: (T, T),
-    lock: (T, T),
-}
-
-impl CipherBalance<u128> for CipherText<u128>{
-
-    type Balance = u128;
-
-    fn make(cipher:&EGICipher<u128>, pk:u128, b:u128, r:u128) -> Self {
-        /*
-         * Encoded the transfer amout cipher into
-         * amout cipher text.
-         */
-        CipherText {pubkey:pk, rel:r, current:cipher.encode(pk, b, r), lock:cipher.encode(pk, b, r)}
-    }
-
-    fn set(self, cipher:&EGICipher<u128>, b:u128) -> Self {
-        let current = cipher.encode(self.pubkey, b, self.rel);
-        CipherText {pubkey:self.pubkey, rel:self.rel, current:current, lock:self.lock}
-    }
-
-    fn switch(self, cipher:&EGICipher<u128>,npub:u128) -> Self {
-        let pk = self.pubkey;
-        let current = cipher.switch(self.pubkey, npub, self.current);
-        let lock = cipher.switch(self.pubkey, npub, self.lock);
-        CipherText {pubkey:npub, rel:self.rel, current:current, lock:lock}
-    }
-
-    fn increase(self, cipher:&EGICipher<u128>, delta:u128) -> Self {
-        let e = cipher.encode(self.pubkey, delta, self.rel);
-        CipherText {pubkey:self.pubkey, rel:self.rel, current: cipher.plus(self.current, e), lock:self.lock}
-    }
-
-    fn decrease(self, cipher:&EGICipher<u128>, delta:u128) -> Self {
-        let e = cipher.encode(self.pubkey, delta, self.rel);
-        CipherText {pubkey:self.pubkey, rel:self.rel, current: cipher.minus(self.current, e), lock:self.lock}
-    }
-
-    fn lock(self, cipher:&EGICipher<u128>, b:u128) -> Self {
-        let e = cipher.encode(self.pubkey, b, self.rel);
-        let current = cipher.minus(self.current, e);
-        let lock = cipher.plus(self.lock, e);
-        CipherText {pubkey:self.pubkey, rel:self.rel, current:current, lock:lock}
-
-    }
-
 }
 
 /*
@@ -172,22 +110,81 @@ decl_storage! {
 decl_module! {
     pub struct Module<T: Trait<I>, I: Instance = DefaultInstance> for enum Call
     where origin: T::Origin {
+
+        /**
+         * Standard transfer function, release the locked amount
+         * and transfer it into the recv's accout.
+         */
         fn transfer(origin,
             amount:u128,
 			recv: <T::Lookup as StaticLookup>::Source
-        ) -> Result {
+        ) -> dispatch::Result {
             let cipher = Cipher::<I>::get().to_cipher();
             let src = ensure_signed(origin)?;
             let src_balance = <BalanceMap<T,I>>::get(src.clone());
 			let dest = T::Lookup::lookup(recv)?;
-            let dest_balance = <BalanceMap<T,I>>::get(dest.clone());
-            let src_new = src_balance.decrease(&cipher, amount);
-            let dest_new = dest_balance.increase(&cipher, amount);
-            <BalanceMap<T,I>>::insert(src, src_new);
-            <BalanceMap<T,I>>::insert(dest, dest_new);
-            Ok(())
+
+            /*
+             * Set the new balance for dest
+             * Create an account if dest account does not exist.
+             */
+            if !<BalanceMap<T,I>>::exists(dest.clone()) {
+                Err("Account does not exists")
+            } else {
+                let src_new = src_balance.release_locked(&cipher, amount)?;
+                let dest_balance = <BalanceMap<T,I>>::get(dest.clone());
+                let dest_new = dest_balance.increase(&cipher, amount);
+
+                // once we reach this spot, no chance to raise exception
+                <BalanceMap<T,I>>::insert(src, src_new);
+                <BalanceMap<T,I>>::insert(dest, dest_new);
+                Ok(())
+            }
         }
 
+        /**
+         * To prevent frequent accound creating attack,
+         * we require a limit amount of balance is transfered into the new account.
+         * The suter client might receive an error code from transfer of non-existence
+         * account. In such case, please use the create account api and provide a
+         * public key and relative r.
+        fn create_account(origin,
+            amount:u128,
+            pubkey:u128,
+            r:u128,
+			recv: <T::Lookup as StaticLookup>::Source
+        ) -> dispatch::Result {
+            let cipher = Cipher::<I>::get().to_cipher();
+            let src = ensure_signed(origin)?;
+            let src_balance = <BalanceMap<T,I>>::get(src.clone());
+			let dest = T::Lookup::lookup(recv)?;
+
+
+            /*
+             * Set the new balance for dest
+             * Create an account if dest account does not exist.
+             */
+            let dest_new = if <BalanceMap<T,I>>::exists(dest) {
+                Err(())
+            } else {
+                Self::new_account(dest, amount);
+                let dest_balance = <BalanceMap<T,I>>::get(dest.clone());
+                let dest_new = dest_balance.increase(&cipher, amount);
+                let src_new = src_balance.release_locked(&cipher, amount)?;
+
+                // once we reach this spot, no chance to raise exception
+                <BalanceMap<T,I>>::insert(src, src_new);
+                <BalanceMap<T,I>>::insert(dest, dest_new);
+                Ok(())
+            }
+        }
+         */
+
+        /**
+         * Before transfer, we need to lock enough balanced in
+         * our account so that all the transfer transaction from
+         * a particular account is well ordered
+         */
         fn lock_balance(
             origin,
             amount:u128,

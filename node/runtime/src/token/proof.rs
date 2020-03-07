@@ -47,6 +47,6 @@ impl<T:PrimeRing<T>> CipherProof<T, T, (T,T)> for EGICipher<T>
         let p = proof.iter().fold(true, |acc, val| {
             acc && self.bit_proof(b, s, *val)
         });
-        return self.check(proof, target);
+        p && self.check(proof, target)
     }
 }
