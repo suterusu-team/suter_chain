@@ -213,7 +213,6 @@ decl_module! {
             trace! ("reset balance ...\n");
             let who = ensure_signed(origin)?;
             let cipher = Cipher::<I>::get().to_cipher();
-            let rel = Rel::<I>::get();
             let who_balance = <BalanceMap<T,I>>::get(who.clone());
             let who_new = who_balance.set(&cipher, amount);
             <BalanceMap<T,I>>::insert(who, who_new);

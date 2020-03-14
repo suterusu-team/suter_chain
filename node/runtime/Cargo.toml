@@ -1,7 +1,7 @@
 [package]
-name = "suter-runtime"
+name = "suter-chain-runtime"
 version = "2.0.0"
-authors = ["Glen"]
+authors = ["Anonymous"]
 edition = "2018"
 
 [dependencies]
