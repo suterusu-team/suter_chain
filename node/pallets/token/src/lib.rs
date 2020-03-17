@@ -1,37 +1,34 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 pub use primitive_types::{U256};
 pub mod balance;
 
-use log::trace;
-
-use crate::token::cipher::{
-    EGICipher,
-    CipherFunctor,
-};
-use crate::token::proof::{
-    CipherProof,
-};
-
-pub use crate::token::balance::{
-    CipherText,
-    CipherBalance,
-};
-
-
-
-use support::{
-    decl_storage, decl_module, decl_event, dispatch
-};
-
-use sr_primitives::{
+use sp_runtime::{
+    DispatchError,
     traits::{
         StaticLookup,
     },
 };
 
-
 use system::{
     ensure_signed,
     ensure_root,
+};
+
+use crate::cipher::{
+    EGICipher,
+    CipherFunctor,
+};
+use crate::proof::{
+    CipherProof,
+};
+
+pub use crate::balance::{
+    CipherText,
+    CipherBalance,
+};
+
+use frame_support::{
+    decl_storage, decl_module, decl_event, dispatch
 };
 
 use codec::{Encode, Decode};
@@ -52,6 +49,7 @@ impl CipherInfo {
 /// The module's configuration trait.
 pub trait Trait<I: Instance = DefaultInstance>: system::Trait {
     type Balance;
+    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
 /*
@@ -93,12 +91,12 @@ decl_storage! {
             config.primeset
         }): u128;
 
-        pub Rel: u128;
+        pub Rel: u32;
 
         pub Cipher: CipherInfo;
 
         BalanceMap get(balance_balance_getter):
-            map T::AccountId => CipherText<u128>;
+            map hasher(blake2_256) T::AccountId => CipherText<u128>;
     }
 	add_extra_genesis {
 		config(primeset): u128;
@@ -111,6 +109,8 @@ decl_module! {
     pub struct Module<T: Trait<I>, I: Instance = DefaultInstance> for enum Call
     where origin: T::Origin {
 
+        fn deposit_event() = default;
+
         /**
          * Standard transfer function, release the locked amount
          * and transfer it into the recv's accout.
@@ -118,7 +118,7 @@ decl_module! {
         fn transfer(origin,
             amount:u128,
 			recv: <T::Lookup as StaticLookup>::Source
-        ) -> dispatch::Result {
+        ) -> dispatch::DispatchResult {
             let cipher = Cipher::<I>::get().to_cipher();
             let src = ensure_signed(origin)?;
             let src_balance = <BalanceMap<T,I>>::get(src.clone());
@@ -128,8 +128,8 @@ decl_module! {
              * Set the new balance for dest
              * Create an account if dest account does not exist.
              */
-            if !<BalanceMap<T,I>>::exists(dest.clone()) {
-                Err("Account does not exists")
+            if !<BalanceMap<T,I>>::contains_key(dest.clone()) {
+                Err(DispatchError::Other("Account does not exists"))
             } else {
                 let src_new = src_balance.release_locked(&cipher, amount)?;
                 let dest_balance = <BalanceMap<T,I>>::get(dest.clone());
@@ -153,7 +153,7 @@ decl_module! {
             pubkey:u128,
             r:u128,
 			recv: <T::Lookup as StaticLookup>::Source
-        ) -> dispatch::Result {
+        ) -> dispatch::DispatchResult {
             let cipher = Cipher::<I>::get().to_cipher();
             let src = ensure_signed(origin)?;
             let src_balance = <BalanceMap<T,I>>::get(src.clone());
@@ -210,7 +210,6 @@ decl_module! {
             origin,
             amount:u128,
         ) {
-            trace! ("reset balance ...\n");
             let who = ensure_signed(origin)?;
             let cipher = Cipher::<I>::get().to_cipher();
             let who_balance = <BalanceMap<T,I>>::get(who.clone());
@@ -229,23 +228,23 @@ decl_module! {
             <BalanceMap<T,I>>::insert(who, who_new);
         }
 
-        fn get_proof_setting(
+        fn TestStorage(
             origin,
-            #[compact] amount:u128,
+            amount:u32,
         ) {
-            ensure_root(origin)?;
-            ProofSetting::<I>::get();
+            //let who = ensure_signed(origin)?;
+            <Rel::<I>>::put(amount);
+            //Self::deposit_event(RawEvent::TokenEvent(who));
         }
     }
 }
 
 decl_event!(
-	pub enum Event<T, I: Instance = DefaultInstance> where
+	pub enum Event<T> where
 		<T as system::Trait>::AccountId,
-		<T as Trait<I>>::Balance
 	{
-		/// A new account was created.
-		NewAccount(AccountId, Balance),
+		TokenEvent(AccountId),
 	}
 );
+
 
