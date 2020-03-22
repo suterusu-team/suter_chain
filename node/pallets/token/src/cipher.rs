@@ -2,6 +2,7 @@ use frame_support::{
     dispatch::{Vec},
 };
 
+use codec::{Encode, Decode};
 use crate::primering::PrimeRing;
 
 //
@@ -21,7 +22,7 @@ use crate::primering::PrimeRing;
 // γ^b = cipher_text.0 / cipher_text.1^x
 //
 
-#[derive(PartialEq)]
+#[derive(Encode, Decode, Default, Clone, PartialEq)]
 pub struct EGICipher<T:Copy> {
     pub gamma: T,
     pub prime: T,
@@ -33,7 +34,7 @@ pub struct EGICipher<T:Copy> {
 pub trait CipherFunctor<Key, F, T> {
 
     /* encode src to target of T */
-    fn encode(&self, pk: Key, src:F, r:F) -> T;
+    fn mk_cipher(&self, pk: Key, src:F, r:F) -> T;
 
     /* Check wheter a proof proves that the prover knows the src */
     fn check(&self, proof:Vec<T>, t:T) -> bool;
@@ -60,7 +61,7 @@ impl<T:PrimeRing<T>> CipherFunctor<T, T, (T,T)> for EGICipher<T>
      * Suppose sender sends the amout := a
      * We encode it into (γ^a * pk^r, γ^r)
      */
-    fn encode(&self, pk:T, a:T, r:T) -> (T, T) {
+    fn mk_cipher(&self, pk:T, a:T, r:T) -> (T, T) {
         let gamma = self.gamma;
         let p = self.prime;
         let gamma_exp_amt = p.power(gamma, a);

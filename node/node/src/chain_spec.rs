@@ -8,7 +8,7 @@ use grandpa_primitives::{AuthorityId as GrandpaId};
 use sc_service;
 use sp_runtime::traits::{Verify, IdentifyAccount};
 
-use runtime::{
+use node_template_runtime::{
     TokenConfig
 };
 
@@ -139,7 +139,9 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 		}),
 
         token: Some(TokenConfig {
-            primeset: 2147483647 //2^31 - 1 is testing prime
+            primeset: 2147483647, //2^31 - 1 is testing prime
+            gamma: 1375,
+            rel: 17, // default rel for add account
         }),
 
 		grandpa: Some(GrandpaConfig {

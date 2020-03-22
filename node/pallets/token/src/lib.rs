@@ -2,6 +2,11 @@
 pub use primitive_types::{U256};
 pub mod balance;
 
+/* Make the WASM binary available.
+#[cfg(feature = "std")]
+include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+*/
+
 use sp_runtime::{
     DispatchError,
     traits::{
@@ -37,14 +42,6 @@ mod primering;
 mod cipher;
 mod proof;
 
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
-struct CipherInfo(u128, u128);
-
-impl CipherInfo {
-    fn to_cipher(self) -> EGICipher<u128> {
-        EGICipher {gamma:self.0, prime:self.1}
-    }
-}
 
 /// The module's configuration trait.
 pub trait Trait<I: Instance = DefaultInstance>: system::Trait {
@@ -80,27 +77,29 @@ where
 */
 
 impl<T:Trait<I>, I: Instance> Module<T,I> {
-	fn initialize_primeset(prime: &u128) {
+	fn initialize_token() {
 	}
 }
 
 decl_storage! {
     trait Store for Module<T:Trait<I>, I:Instance = DefaultInstance>
     as Token {
-        pub ProofSetting build(|config: &GenesisConfig| {
-            config.primeset
-        }): u128;
+        pub Cipher build(|config: &GenesisConfig| {
+            EGICipher {gamma:config.gamma, prime:config.primeset}
+        }): EGICipher<u128>;
 
-        pub Rel: u32;
-
-        pub Cipher: CipherInfo;
+        pub Rel build(|config: &GenesisConfig| {
+            config.rel
+        }): u32;
 
         BalanceMap get(balance_balance_getter):
-            map hasher(blake2_256) T::AccountId => CipherText<u128>;
+            map hasher(opaque_blake2_256) T::AccountId => CipherText<u128>;
     }
 	add_extra_genesis {
 		config(primeset): u128;
-        build(|config| Module::<T,I>::initialize_primeset(&config.primeset))
+		config(gamma): u128;
+		config(rel): u32;
+        build(|config| Module::<T,I>::initialize_token())
 	}
 
 }
@@ -119,26 +118,33 @@ decl_module! {
             amount:u128,
 			recv: <T::Lookup as StaticLookup>::Source
         ) -> dispatch::DispatchResult {
-            let cipher = Cipher::<I>::get().to_cipher();
             let src = ensure_signed(origin)?;
-            let src_balance = <BalanceMap<T,I>>::get(src.clone());
-			let dest = T::Lookup::lookup(recv)?;
 
-            /*
-             * Set the new balance for dest
-             * Create an account if dest account does not exist.
-             */
-            if !<BalanceMap<T,I>>::contains_key(dest.clone()) {
-                Err(DispatchError::Other("Account does not exists"))
+            let cipher = Cipher::<I>::get();
+            return Err(DispatchError::Other("WTF ??"));
+
+            if !<BalanceMap<T,I>>::contains_key(src.clone()) {
+                Err(DispatchError::Other("Soruce account is not established"))
             } else {
-                let src_new = src_balance.release_locked(&cipher, amount)?;
-                let dest_balance = <BalanceMap<T,I>>::get(dest.clone());
-                let dest_new = dest_balance.increase(&cipher, amount);
+                let src_balance = <BalanceMap<T,I>>::get(src.clone());
+    			let dest = T::Lookup::lookup(recv)?;
 
-                // once we reach this spot, no chance to raise exception
-                <BalanceMap<T,I>>::insert(src, src_new);
-                <BalanceMap<T,I>>::insert(dest, dest_new);
-                Ok(())
+                /*
+                 * Set the new balance for dest
+                 * Create an account if dest account does not exist.
+                 */
+                if !<BalanceMap<T,I>>::contains_key(dest.clone()) {
+                    Err(DispatchError::Other("Target account is not established"))
+                } else {
+                    let src_new = src_balance.release_locked(&cipher, amount)?;
+                    let dest_balance = <BalanceMap<T,I>>::get(dest.clone());
+                    let dest_new = dest_balance.increase(&cipher, amount);
+
+                    // once we reach this spot, no chance to raise exception
+                    <BalanceMap<T,I>>::insert(src, src_new);
+                    <BalanceMap<T,I>>::insert(dest, dest_new);
+                    Ok(())
+                }
             }
         }
 
@@ -154,7 +160,7 @@ decl_module! {
             r:u128,
 			recv: <T::Lookup as StaticLookup>::Source
         ) -> dispatch::DispatchResult {
-            let cipher = Cipher::<I>::get().to_cipher();
+            let cipher = Cipher::<I>::get();
             let src = ensure_signed(origin)?;
             let src_balance = <BalanceMap<T,I>>::get(src.clone());
 			let dest = T::Lookup::lookup(recv)?;
@@ -192,9 +198,9 @@ decl_module! {
             proof:[(u128,u128);4],
         ) {
             let who = ensure_signed(origin)?;
-            let cipher = Cipher::<I>::get().to_cipher();
+            let cipher = Cipher::<I>::get();
             let balance = <BalanceMap<T,I>>::get(who.clone());
-            let delta = cipher.encode(balance.pubkey, amount, balance.rel);
+            let delta = cipher.mk_cipher(balance.pubkey, amount, balance.rel);
             let remain_cipher = cipher.minus(balance.current, delta);
 
             /* TODO: need to port zkrp in ING
@@ -211,7 +217,7 @@ decl_module! {
             amount:u128,
         ) {
             let who = ensure_signed(origin)?;
-            let cipher = Cipher::<I>::get().to_cipher();
+            let cipher = Cipher::<I>::get();
             let who_balance = <BalanceMap<T,I>>::get(who.clone());
             let who_new = who_balance.set(&cipher, amount);
             <BalanceMap<T,I>>::insert(who, who_new);
@@ -222,7 +228,7 @@ decl_module! {
             key:u128,
         ) {
             let who = ensure_signed(origin)?;
-            let cipher = Cipher::<I>::get().to_cipher();
+            let cipher = Cipher::<I>::get();
             let who_balance = <BalanceMap<T,I>>::get(who.clone());
             let who_new = who_balance.switch(&cipher, key);
             <BalanceMap<T,I>>::insert(who, who_new);
@@ -232,9 +238,9 @@ decl_module! {
             origin,
             amount:u32,
         ) {
-            //let who = ensure_signed(origin)?;
+            let who = ensure_signed(origin)?;
             <Rel::<I>>::put(amount);
-            //Self::deposit_event(RawEvent::TokenEvent(who));
+            Self::deposit_event(RawEvent::TokenEvent(who));
         }
     }
 }
@@ -246,5 +252,3 @@ decl_event!(
 		TokenEvent(AccountId),
 	}
 );
-
-

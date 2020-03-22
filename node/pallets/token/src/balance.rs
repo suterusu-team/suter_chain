@@ -46,7 +46,7 @@ impl CipherBalance<u128> for CipherText<u128>{
      * Set the lock to be the cipher of amount zero
      */
     fn make(cipher:&EGICipher<u128>, pk:u128, b:u128, r:u128) -> Self {
-        CipherText {pubkey:pk, rel:r, current:cipher.encode(pk, b, r), lock:cipher.encode(pk, 0, r)}
+        CipherText {pubkey:pk, rel:r, current:cipher.mk_cipher(pk, b, r), lock:cipher.mk_cipher(pk, 0, r)}
     }
 
 
@@ -56,7 +56,7 @@ impl CipherBalance<u128> for CipherText<u128>{
      */
 
     fn lock(self, cipher:&EGICipher<u128>, b:u128) -> Self {
-        let e = cipher.encode(self.pubkey, b, self.rel);
+        let e = cipher.mk_cipher(self.pubkey, b, self.rel);
         let current = cipher.minus(self.current, e);
         let lock = cipher.plus(self.lock, e);
         CipherText {pubkey:self.pubkey, rel:self.rel, current:current, lock:lock}
@@ -68,8 +68,8 @@ impl CipherBalance<u128> for CipherText<u128>{
      * then the released amount.
      */
     fn release_locked(self, cipher:&EGICipher<u128>, amount:u128) -> Result<CipherText<u128>, &'static str> {
-        let t = cipher.encode(self.pubkey, amount, self.rel);
-        let lock = cipher.encode(self.pubkey, 0, self.rel);
+        let t = cipher.mk_cipher(self.pubkey, amount, self.rel);
+        let lock = cipher.mk_cipher(self.pubkey, 0, self.rel);
         if self.lock == t {
             let x = CipherText {
                 pubkey:self.pubkey,
@@ -84,7 +84,7 @@ impl CipherBalance<u128> for CipherText<u128>{
     }
 
     fn set(self, cipher:&EGICipher<u128>, b:u128) -> Self {
-        let current = cipher.encode(self.pubkey, b, self.rel);
+        let current = cipher.mk_cipher(self.pubkey, b, self.rel);
         CipherText {pubkey:self.pubkey, rel:self.rel, current:current, lock:self.lock}
     }
 
@@ -96,12 +96,12 @@ impl CipherBalance<u128> for CipherText<u128>{
     }
 
     fn increase(self, cipher:&EGICipher<u128>, delta:u128) -> Self {
-        let e = cipher.encode(self.pubkey, delta, self.rel);
+        let e = cipher.mk_cipher(self.pubkey, delta, self.rel);
         CipherText {pubkey:self.pubkey, rel:self.rel, current: cipher.plus(self.current, e), lock:self.lock}
     }
 
     fn decrease(self, cipher:&EGICipher<u128>, delta:u128) -> Self {
-        let e = cipher.encode(self.pubkey, delta, self.rel);
+        let e = cipher.mk_cipher(self.pubkey, delta, self.rel);
         CipherText {pubkey:self.pubkey, rel:self.rel, current: cipher.minus(self.current, e), lock:self.lock}
     }
 }
